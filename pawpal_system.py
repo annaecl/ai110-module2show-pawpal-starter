@@ -2,13 +2,14 @@
 # Tracks what the task is, how long it takes, and whether it's been done.
 class Task:
     def __init__(self, name: str, duration_minutes: int, category: str):
+        """Initialize a Task with a name, duration, and category."""
         self.name = name
         self.duration_minutes = duration_minutes
         self.category = category
         self.is_completed = False  # starts as not done
 
     def complete(self):
-        # Mark this task as finished
+        """Mark this task as completed."""
         self.is_completed = True
 
 
@@ -17,6 +18,7 @@ class Task:
 # This lets the same Task type be assigned to different pets with different urgency.
 class PetTask:
     def __init__(self, pet, task: Task, priority: int):
+        """Initialize a PetTask linking a pet to a task with a given priority."""
         self.pet = pet        # which pet this task belongs to
         self.task = task      # the task details (name, duration, category)
         self.priority = priority
@@ -25,17 +27,18 @@ class PetTask:
 # Represents a pet with its own list of care tasks.
 class Pet:
     def __init__(self, name: str, species: str, breed: str):
+        """Initialize a Pet with a name, species, and breed."""
         self.name = name
         self.species = species
         self.breed = breed
         self.pet_tasks: list[PetTask] = []  # all tasks assigned to this pet
 
     def add_task(self, task: Task, priority: int):
-        # Wrap the task in a PetTask (binding it to this pet) and store it
+        """Wrap the task in a PetTask and add it to this pet's task list."""
         self.pet_tasks.append(PetTask(self, task, priority))
 
     def get_tasks(self) -> list[PetTask]:
-        # Return all PetTasks assigned to this pet
+        """Return all PetTasks assigned to this pet."""
         return self.pet_tasks
 
 
@@ -43,19 +46,20 @@ class Pet:
 # Tracks which tasks are planned, total time required, and why tasks were chosen.
 class Plan:
     def __init__(self, day_of_week: str):
+        """Initialize an empty Plan for the given day of the week."""
         self.day_of_week = day_of_week
         self.tasks: list[PetTask] = []  # tasks scheduled for this day
         self.total_duration = 0         # running total of minutes across all tasks
         self.reasoning = ""             # explanation of how the plan was built
 
     def add_task(self, pet_task: PetTask):
-        # Add a task to the plan and update the total time
+        """Add a PetTask to the plan and update the total duration."""
         self.tasks.append(pet_task)
         self.total_duration += pet_task.task.duration_minutes
 
     def get_summary(self) -> str:
-        # Build a human-readable overview of every task in the plan
-        lines = [f"Plan for {self.day_of_week} ({self.date}):"]
+        """Return a formatted string listing all tasks and the total time."""
+        lines = [f"Plan for {self.day_of_week}:"]
         for pt in self.tasks:
             # ✓ = done, ○ = still to do
             status = "✓" if pt.task.is_completed else "○"
@@ -67,6 +71,7 @@ class Plan:
         return "\n".join(lines)
 
     def explain_reasoning(self) -> str:
+        """Return the reasoning string explaining how this plan was built."""
         # Return the explanation set when the plan was generated
         return self.reasoning
 
@@ -74,6 +79,7 @@ class Plan:
 # The pet owner who manages multiple pets and generates daily care plans.
 class PetOwner:
     def __init__(self, name: str):
+        """Initialize a PetOwner with a name and default 60-minute daily availability."""
         self.name = name
         self.available_minutes_per_day: dict[str, int] = {
             "Monday": 60, "Tuesday": 60, "Wednesday": 60,
@@ -83,15 +89,16 @@ class PetOwner:
         self.pets: list[Pet] = []                            # all pets owned
 
     def set_available_time(self, day: str, minutes: int):
-        # Set how many minutes the owner has available on a given day
+        """Set the number of available care minutes for a specific day."""
         self.available_minutes_per_day[day] = minutes
 
     def add_pet(self, pet: Pet):
-        # Register a pet under this owner
+        """Register a pet under this owner."""
         self.pets.append(pet)
 
     def generate_plan(self, day: str) -> Plan:
-        plan = Plan(date=day, day_of_week=day)
+        """Build and store a priority-ordered care plan for the given day, skipping tasks that don't fit."""
+        plan = Plan(day_of_week=day)
 
         # Look up how many minutes the owner has free on this day (default 0)
         available = self.available_minutes_per_day.get(day, 0)
@@ -101,8 +108,8 @@ class PetOwner:
         for pet in self.pets:
             all_tasks.extend(pet.get_tasks())
 
-        # Sort by priority ascending so the most important tasks are scheduled first
-        all_tasks.sort(key=lambda pt: pt.priority)
+        # Sort by priority ascending, then by duration ascending for ties
+        all_tasks.sort(key=lambda pt: (pt.priority, pt.task.duration_minutes))
 
         skipped = []
         for pt in all_tasks:
