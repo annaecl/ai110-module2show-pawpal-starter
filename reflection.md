@@ -5,12 +5,38 @@
 **a. Initial design**
 
 - Briefly describe your initial UML design.
+
+### Three core actions: 
+1. Add a pet, attached to specific tasks
+2. Generate a daily plan 
+3. Input user information, such as constraints 
+
+I think I probably will need four main classes: 
+- Care Task
+    - Attributes: duration, priority, name, description
+- Pet
+    - Attributes: name, age, type, list of required tasks 
+- Pet Caretaker
+    - Attributes: first name, last name, age, list of pets, weekly plan?
+- Plan 
+    - Attributes: date, lists of tasks 
+
 - What classes did you include, and what responsibilities did you assign to each?
+
+- Care Task
+    - Responsibilities: 
+- Pet
+    - Responsibilities: have an updated list of necessary tasks? 
+- Pet Caretaker
+    - Responsabilities: generate new plans
+- Plan 
+    - Responsabilities: 
 
 **b. Design changes**
 
-- Did your design change during implementation?
+- Did your design change during implementation? Yes!
 - If yes, describe at least one change and why you made it.
+I was trying to figure out how to make the relationship between Task and Pet more flexible given that each task may have a priority that is specific to a certain pet (for example, going on a walk may be higher priority for a dog than for a cat.) Claude Code suggested that I create a mediating class, called Pet Task, that would link a specific task to a specific pet, and then create a priority given this context. I incorporated this change into my UML diagram. 
 
 ---
 
