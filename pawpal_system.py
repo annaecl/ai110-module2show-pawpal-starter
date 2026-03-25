@@ -48,9 +48,10 @@ class Plan:
     def __init__(self, day_of_week: str):
         """Initialize an empty Plan for the given day of the week."""
         self.day_of_week = day_of_week
-        self.tasks: list[PetTask] = []  # tasks scheduled for this day
-        self.total_duration = 0         # running total of minutes across all tasks
-        self.reasoning = ""             # explanation of how the plan was built
+        self.tasks: list[PetTask] = []    # tasks scheduled for this day
+        self.skipped: list[PetTask] = []  # tasks that didn't fit within available time
+        self.total_duration = 0           # running total of minutes across all tasks
+        self.reasoning = ""               # explanation of how the plan was built
 
     def add_task(self, pet_task: PetTask):
         """Add a PetTask to the plan and update the total duration."""
@@ -111,7 +112,6 @@ class PetOwner:
         # Sort by priority ascending, then by duration ascending for ties
         all_tasks.sort(key=lambda pt: (pt.priority, pt.task.duration_minutes))
 
-        skipped = []
         for pt in all_tasks:
             if pt.task.duration_minutes <= available:
                 # Task fits — add it and subtract its time from what's left
@@ -119,12 +119,12 @@ class PetOwner:
                 available -= pt.task.duration_minutes
             else:
                 # Not enough time remaining — record it as skipped
-                skipped.append(pt)
+                plan.skipped.append(pt)
 
         # Record why certain tasks were included or left out
-        if skipped:
+        if plan.skipped:
             skipped_names = ", ".join(
-                f"{pt.pet.name}'s {pt.task.name}" for pt in skipped
+                f"{pt.pet.name}'s {pt.task.name}" for pt in plan.skipped
             )
             plan.reasoning = (
                 f"Tasks were added in priority order. "
@@ -132,6 +132,7 @@ class PetOwner:
             )
         else:
             plan.reasoning = "All tasks fit within the available time for the day."
+
 
         # Save the plan so it can be retrieved later without regenerating
         self.weekly_plan[day] = plan
