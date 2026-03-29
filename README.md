@@ -22,6 +22,16 @@ Your final app should:
 - Display the plan clearly (and ideally explain the reasoning)
 - Include tests for the most important scheduling behaviors
 
+## Smarter Scheduling
+
+PawPal+ goes beyond a simple task list with several scheduling improvements:
+
+- **Priority-based ordering** — tasks are sorted by priority (1 = most important) so critical care always gets scheduled first. Ties are broken by the task's scheduled time.
+- **Conflict detection** — before adding any task to the plan, the scheduler checks whether its time window overlaps with an already-scheduled task. Conflicting tasks are moved to a `skipped` list and reported in the plan's reasoning.
+- **Recurring tasks** — tasks can be marked `"daily"` or `"weekly"`. Completing a recurring task automatically generates the next occurrence with the correct due date (`today + 1 day` or `today + 7 days`).
+- **Explained reasoning** — every generated plan includes a human-readable summary of why certain tasks were chosen and which (if any) were skipped due to time conflicts.
+- **Flexible filtering** — the `Scheduler` utility can filter tasks by completion status or by pet name, making it easy to show only what's left to do or focus on one pet at a time.
+
 ## Getting started
 
 ### Setup

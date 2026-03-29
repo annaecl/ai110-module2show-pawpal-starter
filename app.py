@@ -1,4 +1,5 @@
 import streamlit as st
+from datetime import date
 from pawpal_system import Task, Pet, PetOwner
 
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
@@ -6,21 +7,24 @@ st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 st.title("🐾 PawPal+")
 st.caption("A pet care planning assistant that builds a priority-based daily schedule.")
 
-DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-
 # ── Initialize session state vaults ──────────────────────────────────────────
 if "owner_name" not in st.session_state:
     st.session_state.owner_name = ""
 
 if "availability" not in st.session_state:
-    # Default 60 min per day — mirrors PetOwner's own default
-    st.session_state.availability = {day: 60 for day in DAYS}
+    st.session_state.availability = {}  # {date_string: minutes}
 
 if "pets" not in st.session_state:
     st.session_state.pets = []   # list of dicts: {name, species, breed}
 
 if "tasks" not in st.session_state:
-    st.session_state.tasks = []  # list of dicts: {pet_name, name, duration_minutes, priority, category}
+    st.session_state.tasks = []  # list of dicts: {pet_name, name, duration_minutes, priority, category, time, frequency}
+
+if "next_tasks" not in st.session_state:
+    st.session_state.next_tasks = {}  # {task_key: next Task} — next occurrence after completing a recurring task
+
+if "selected_date" not in st.session_state:
+    st.session_state.selected_date = date.today()
 
 # ── Step 1: Owner ─────────────────────────────────────────────────────────────
 st.divider()
@@ -36,7 +40,7 @@ with col_btn:
         if new_name != st.session_state.owner_name:
             # Owner changed — reset everything tied to the previous owner
             st.session_state.owner_name = new_name
-            st.session_state.availability = {day: 60 for day in DAYS}
+            st.session_state.availability = {}
             st.session_state.pets = []
             st.session_state.tasks = []
             if "plan" in st.session_state:
@@ -47,20 +51,6 @@ if st.session_state.owner_name:
 else:
     st.info("Enter an owner name and click Save owner.")
 
-# Weekly availability — one input per day
-st.markdown("**Weekly availability (minutes per day)**")
-day_cols = st.columns(7)
-for i, day in enumerate(DAYS):
-    with day_cols[i]:
-        new_val = st.number_input(
-            day[:3],  # "Mon", "Tue", etc.
-            min_value=0,
-            max_value=480,
-            value=st.session_state.availability[day],
-            step=5,
-            key=f"avail_{day}",
-        )
-        st.session_state.availability[day] = new_val
 
 # ── Step 2: Pets ──────────────────────────────────────────────────────────────
 st.divider()
@@ -122,15 +112,25 @@ else:
         task_priority = st.selectbox("Priority", ["high", "medium", "low"])
         task_category = st.selectbox("Category", ["Exercise", "Nutrition", "Hygiene", "Health", "Play"])
 
-    task_duration = st.slider("Duration (minutes)", min_value=5, max_value=120, value=20, step=5)
+    col_dur, col_time, col_freq = st.columns(3)
+    with col_dur:
+        task_duration = st.slider("Duration (minutes)", min_value=5, max_value=120, value=20, step=5)
+    with col_time:
+        task_time = st.time_input("Scheduled time", value=None, help="When this task should happen")
+    with col_freq:
+        task_frequency = st.selectbox("Frequency", ["none", "daily", "weekly"],
+                                      help="Recurring tasks auto-reschedule when marked complete")
 
     if st.button("Add task"):
+        time_str = task_time.strftime("%H:%M") if task_time else "00:00"
         st.session_state.tasks.append({
             "pet_name": task_pet,
             "name": task_name,
             "duration_minutes": task_duration,
             "priority": task_priority,
             "category": task_category,
+            "time": time_str,
+            "frequency": task_frequency if task_frequency != "none" else None,
         })
 
     if st.session_state.tasks:
@@ -138,9 +138,10 @@ else:
         for i, t in enumerate(st.session_state.tasks):
             col_info, col_remove = st.columns([5, 1])
             with col_info:
+                freq_label = f", {t['frequency']}" if t.get("frequency") else ""
                 st.markdown(
                     f"- **{t['name']}** for {t['pet_name']} — "
-                    f"{t['duration_minutes']} min, {t['priority']} priority, {t['category']}"
+                    f"{t.get('time', '00:00')} | {t['duration_minutes']} min, {t['priority']} priority, {t['category']}{freq_label}"
                 )
             with col_remove:
                 if st.button("Remove", key=f"remove_task_{i}"):
@@ -153,11 +154,17 @@ else:
 st.divider()
 st.subheader("Step 4 — Generate Schedule")
 
-day = st.selectbox("Day to generate plan for", DAYS)
+selected_date = st.date_input("Date to generate plan for", value=st.session_state.selected_date)
 
-# Show how many minutes are set for the selected day
-avail_for_day = st.session_state.availability[day]
-st.caption(f"Available time on {day}: **{avail_for_day} min** (change this in Step 1 above)")
+# When the date changes, remove one-off tasks and clear the current plan
+if selected_date != st.session_state.selected_date:
+    st.session_state.selected_date = selected_date
+    st.session_state.tasks = [t for t in st.session_state.tasks if t.get("frequency")]
+    st.session_state.next_tasks = {}
+    if "plan" in st.session_state:
+        del st.session_state.plan
+
+date_str = selected_date.strftime("%Y-%m-%d")
 
 if st.button("Generate schedule", type="primary"):
     if not st.session_state.owner_name:
@@ -169,10 +176,7 @@ if st.button("Generate schedule", type="primary"):
     else:
         priority_map = {"high": 1, "medium": 2, "low": 3}
 
-        # Build the owner and apply all weekly time constraints
         owner = PetOwner(name=st.session_state.owner_name)
-        for d, mins in st.session_state.availability.items():
-            owner.set_available_time(d, mins)
 
         # Build a Pet object for each saved pet (with breed)
         pet_objects = {}
@@ -187,30 +191,59 @@ if st.button("Generate schedule", type="primary"):
                 name=t["name"],
                 duration_minutes=t["duration_minutes"],
                 category=t["category"],
+                time=t.get("time", "00:00"),
+                frequency=t.get("frequency"),
             )
             pet_objects[t["pet_name"]].add_task(task, priority=priority_map[t["priority"]])
 
-        # Generate and store the plan
-        st.session_state.plan = owner.generate_plan(day)
+        # Generate and store the plan; clear any stale next-task info
+        st.session_state.plan = owner.generate_plan(date_str)
+        st.session_state.next_tasks = {}
 
 # ── Display Plan ──────────────────────────────────────────────────────────────
 if "plan" in st.session_state:
     plan = st.session_state.plan
     st.divider()
-    st.subheader(f"Schedule — {plan.day_of_week}")
+    st.subheader(f"Schedule — {plan.date}")
 
     if plan.tasks:
-        for pt in plan.tasks:
+        for i, pt in enumerate(plan.scheduler.sort_by_time()):
             priority_label = {1: "high", 2: "medium", 3: "low"}.get(pt.priority, str(pt.priority))
-            st.markdown(
-                f"🔲 **{pt.task.name}** for {pt.pet.name} &nbsp;|&nbsp; "
-                f"{pt.task.duration_minutes} min &nbsp;|&nbsp; "
-                f"Priority: {priority_label} &nbsp;|&nbsp; "
-                f"Category: {pt.task.category}"
-            )
+            task_key = f"{pt.pet.name}_{pt.task.name}_{pt.task.time}"
+            freq_badge = f" 🔁 {pt.task.frequency}" if pt.task.frequency else ""
+
+            col_task, col_btn = st.columns([5, 1])
+            with col_task:
+                if pt.task.is_completed:
+                    st.markdown(
+                        f"✅ ~~**{pt.task.time}** &nbsp;|&nbsp; **{pt.task.name}** for {pt.pet.name}~~ &nbsp;|&nbsp; "
+                        f"{pt.task.duration_minutes} min &nbsp;|&nbsp; "
+                        f"Priority: {priority_label} &nbsp;|&nbsp; "
+                        f"Category: {pt.task.category}{freq_badge}"
+                    )
+                else:
+                    st.markdown(
+                        f"🔲 **{pt.task.time}** &nbsp;|&nbsp; **{pt.task.name}** for {pt.pet.name} &nbsp;|&nbsp; "
+                        f"{pt.task.duration_minutes} min &nbsp;|&nbsp; "
+                        f"Priority: {priority_label} &nbsp;|&nbsp; "
+                        f"Category: {pt.task.category}{freq_badge}"
+                    )
+            with col_btn:
+                if not pt.task.is_completed:
+                    if st.button("Done", key=f"complete_{task_key}_{i}"):
+                        next_task = plan.scheduler.mark_task_complete(pt)
+                        if next_task:
+                            st.session_state.next_tasks[task_key] = next_task
+                        st.rerun()
+
+            # Show next-occurrence info for recurring tasks that were just completed
+            if task_key in st.session_state.next_tasks:
+                nt = st.session_state.next_tasks[task_key]
+                st.caption(f"   ↳ Next **{nt.name}** scheduled for {nt.due_date} ({nt.frequency})")
+
         st.metric("Total scheduled time", f"{plan.total_duration} min")
     else:
-        st.warning("No tasks fit within the available time. Try increasing the minutes for this day in Step 1.")
+        st.warning("No tasks could be scheduled — all tasks have conflicting time windows.")
 
     st.divider()
     st.subheader("Why this plan?")

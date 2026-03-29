@@ -45,12 +45,17 @@ I was trying to figure out how to make the relationship between Task and Pet mor
 **a. Constraints and priorities**
 
 - What constraints does your scheduler consider (for example: time, priority, preferences)?
+We allow the owner to indicate a time for the task, how long the task will take, and the relative priority of the task. However, there are some constraints: two tasks can't be scheduled for the same time, so we prioritize: a. tasks that are high priority, and b. tasks that are scheduled first. 
+
 - How did you decide which constraints mattered most?
+Resolving conflicts was probably the most important constraint to consider, given that failing to address this potential issue would result in nonsensical plans. However, I did not factor in the amount of free time of the owner into the plans, as this would add unnecessary complexity. I will discuss this below. 
 
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
+The scheduler does not consider the amount of free time the owner has every particular day. 
 - Why is that tradeoff reasonable for this scenario?
+Initially, I designed the program to be a weekly schedule, so it made sense for the owner to indicate how much free time she expected to have each day of the week (assuming she had a regular schedule). However, as the program evolved, I decided to switch it up and allow the owner to generate plans for specific dates instead. This made it less reasonable to expect the owner to know how much free time she would have at said future date, and it seemed more beneficial to have a full plan organized based on priority. That way the owner could have access to a full plan but decide what to actually complete herself. 
 
 ---
 
