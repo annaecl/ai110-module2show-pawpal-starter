@@ -42,6 +42,34 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+## Testing PawPal+
+
+### Running the tests
+
+```bash
+python -m pytest
+```
+
+### What the tests cover
+
+| Test | What it verifies |
+|------|-----------------|
+| `test_task_completion` | `Task.complete()` flips `is_completed` from `False` to `True` |
+| `test_task_addition_increases_count` | `Pet.add_task()` correctly appends a task to the pet's task list |
+| `test_sort_by_time_returns_chronological_order` | `Scheduler.sort_by_time()` returns tasks sorted earliest → latest regardless of insertion order |
+| `test_daily_recurring_task_schedules_next_occurrence` | Completing a `"daily"` task marks it done and auto-generates a new occurrence due tomorrow |
+| `test_check_conflicts_detects_duplicate_times` | `Scheduler.check_conflicts()` flags two tasks that overlap at the same start time |
+
+> **Note:** One test (`test_tasks_sorted_by_priority_and_duration`) is currently commented out pending a refinement to tie-breaking logic.
+
+### Confidence Level
+
+**3 / 5 stars**
+
+The core behaviors — task completion, task addition, chronological sorting, conflict detection, and daily recurrence — are all verified and passing. Confidence is held back by the commented-out priority tie-breaking test and the lack of coverage for edge cases such as overlapping (but not identical) time windows, weekly recurrence, and the full `generate_plan` pipeline end-to-end.
+
+---
+
 ### Suggested workflow
 
 1. Read the scenario carefully and identify requirements and edge cases.
