@@ -22,15 +22,29 @@ Your final app should:
 - Display the plan clearly (and ideally explain the reasoning)
 - Include tests for the most important scheduling behaviors
 
-## Smarter Scheduling
+## Demo 
+<a href="/demo.png" target="_blank"><img src='/demo.png' title='PawPal App' width='' alt='PawPal App' class='center-block' /></a>.
+![alt text](image.png)
 
-PawPal+ goes beyond a simple task list with several scheduling improvements:
+## Features
 
-- **Priority-based ordering** — tasks are sorted by priority (1 = most important) so critical care always gets scheduled first. Ties are broken by the task's scheduled time.
-- **Conflict detection** — before adding any task to the plan, the scheduler checks whether its time window overlaps with an already-scheduled task. Conflicting tasks are moved to a `skipped` list and reported in the plan's reasoning.
-- **Recurring tasks** — tasks can be marked `"daily"` or `"weekly"`. Completing a recurring task automatically generates the next occurrence with the correct due date (`today + 1 day` or `today + 7 days`).
-- **Explained reasoning** — every generated plan includes a human-readable summary of why certain tasks were chosen and which (if any) were skipped due to time conflicts.
-- **Flexible filtering** — the `Scheduler` utility can filter tasks by completion status or by pet name, making it easy to show only what's left to do or focus on one pet at a time.
+- **Priority-based plan generation** — `PetOwner.generate_plan()` schedules tasks in priority order (1 = highest), using scheduled time as a tiebreaker when priorities are equal.
+
+- **Chronological sorting** — `Scheduler.sort_by_time()` returns tasks sorted by their `HH:MM` scheduled time using Python's built-in `sorted()` with a key function.
+
+- **Conflict detection** — `Scheduler.check_conflicts()` runs an O(n²) pairwise comparison of every task's time window (`start` to `start + duration`) and reports human-readable warnings for any overlapping pairs.
+
+- **Conflict-aware scheduling** — `generate_plan()` uses `_conflicts()` to skip any task whose time window overlaps an already-scheduled task, logging skipped tasks in `Plan.reasoning`.
+
+- **Daily and weekly recurrence** — `Scheduler.mark_task_complete()` marks a task done and, for `frequency="daily"` or `"weekly"` tasks, automatically creates a new `Task` with the next due date calculated via `timedelta`.
+
+- **Task filtering** — `Scheduler.filter_tasks()` lets you query tasks by completion status, by pet name, or both simultaneously.
+
+- **Multi-pet support** — A `PetOwner` manages multiple `Pet` objects, each with their own prioritized `PetTask` list, all merged into a single daily plan.
+
+- **Plan summary with status indicators** — `Plan.get_summary()` renders each task with a ✓ (done) or ○ (pending) marker, category label, duration, and priority.
+
+- **Explainable reasoning** — `Plan.explain_reasoning()` returns a plain-English string describing which tasks were skipped and why.
 
 ## Getting started
 
